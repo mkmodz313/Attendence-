@@ -88,14 +88,13 @@ class SheetsViewModel(private val repo: DataRepository = DataRepository()) : Vie
         launchSafely { repo.setSheet(s.copy(name = n, groupName = group.trim())) }
     }
 
-    /** Deletes the sheet together with its names and marks. */
+    /** Deletes the sheet first (so it always disappears), then cleans up its names and month tables. */
     fun deleteSheet(s: SheetDef) = launchSafely {
-        members.value.filter { it.sheetId == s.id }.forEach { m ->
-            repo.deleteSheetMember(m.id)
-        }
-        repo.deleteGridsOfSheet(s.id)
+        val sheetMembers = members.value.filter { it.sheetId == s.id }
         repo.deleteSheet(s.id)
         message = "Sheet deleted"
+        runCatching { repo.deleteGridsOfSheet(s.id) }
+        sheetMembers.forEach { m -> runCatching { repo.deleteSheetMember(m.id) } }
     }
 
     fun addMember(sheetId: String, name: String): Boolean {
