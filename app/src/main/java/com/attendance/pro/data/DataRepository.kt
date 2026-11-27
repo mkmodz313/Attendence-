@@ -6,6 +6,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.catch
@@ -92,8 +93,12 @@ class DataRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
         awaitClose { reg.remove() }
     }.catch { emit(GridSnap(docId, null, true, true)) }
 
-    suspend fun getSheetGrid(docId: String): SheetGrid? = withTimeoutOrNull(6000) {
-        db.collection("sheet_grids").document(docId).get().await().toObject(SheetGrid::class.java)
+    /** Never throws: tries the server briefly, then the copy saved on the phone (works offline). */
+    suspend fun getSheetGrid(docId: String): SheetGrid? {
+        val ref = db.collection("sheet_grids").document(docId)
+        val online = withTimeoutOrNull(3000) { runCatching { ref.get().await() }.getOrNull() }
+        val snap = online ?: runCatching { ref.get(Source.CACHE).await() }.getOrNull()
+        return snap?.toObject(SheetGrid::class.java)
     }
 
     suspend fun setSheetGrid(g: SheetGrid): Boolean =

@@ -32,8 +32,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        // Admin access is always password protected: every app start begins signed out.
-        if (savedInstanceState == null) runCatching { FirebaseAuth.getInstance().signOut() }
+        // The admin stays signed in after the first login (until the logout button is pressed).
         enableEdgeToEdge()
         setContent {
             AttendanceTheme {
@@ -47,8 +46,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppRoot(authVm: AuthViewModel) {
     val sheetsVm: SheetsViewModel = viewModel()
-    var adminMode by rememberSaveable { mutableStateOf(false) }
     val state by authVm.state.collectAsStateWithLifecycle()
+    // already signed in as admin => open the admin panel directly, no password
+    var adminMode by rememberSaveable {
+        mutableStateOf((authVm.state.value as? AuthState.LoggedIn)?.session?.role == Role.ADMIN)
+    }
 
     Box(Modifier.fillMaxSize().auroraBackground()) {
         if (!adminMode) {
@@ -62,7 +64,7 @@ private fun AppRoot(authVm: AuthViewModel) {
                 }
                 is AuthState.LoggedIn -> {
                     if (s.session.role == Role.ADMIN) {
-                        BackHandler { authVm.signOut(); adminMode = false }
+                        BackHandler { adminMode = false }   // back = public view; stays signed in
                         AdminPanel(sheetsVm) { authVm.signOut(); adminMode = false }
                     } else {
                         LaunchedEffect(s) { authVm.signOut() }

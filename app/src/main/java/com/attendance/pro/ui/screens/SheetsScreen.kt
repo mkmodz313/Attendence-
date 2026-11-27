@@ -189,6 +189,10 @@ private fun SheetDetail(
     val g: SheetGrid? = if (valid) snap.grid else null
     val monthTitle = ym.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + ym.year
 
+    // offline / slow network: after 2 s stop waiting for the server and let the admin work on the phone copy
+    var waited by remember(expectedId) { mutableStateOf(false) }
+    LaunchedEffect(expectedId) { delay(2000); waited = true }
+
     var sel by remember(expectedId) { mutableStateOf<Sel?>(null) }
     var editingText by remember { mutableStateOf(false) }
     var colorFor by remember { mutableStateOf<String?>(null) }
@@ -245,7 +249,7 @@ private fun SheetDetail(
 
         if (g == null) {
             Raised3DCard(Modifier.fillMaxWidth().padding(top = 8.dp), accent = Neon) {
-                val ready = valid && snap.loaded && !snap.fromCache
+                val ready = valid && snap.loaded && (!snap.fromCache || waited)
                 Text(
                     if (ready) "No sheet for $monthTitle yet" else "Loading...",
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = SilverBright

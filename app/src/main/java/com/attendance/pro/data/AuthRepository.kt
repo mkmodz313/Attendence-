@@ -2,6 +2,8 @@ package com.attendance.pro.data
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.tasks.await
 
 enum class Role { ADMIN, WORKER }
@@ -18,8 +20,11 @@ class AuthRepository(
 ) {
     suspend fun restoreSession(): Session? {
         val user = auth.currentUser ?: return null
-        return runCatching { resolve(user.uid, user.email) }.getOrNull()
-            ?: run { auth.signOut(); null }
+        val server = runCatching { withTimeout(4000) { resolve(user.uid, user.email, Source.DEFAULT) } }
+        // The server answered: either access is confirmed, or it is really gone => sign out.
+        if (server.isSuccess) return server.getOrNull() ?: run { auth.signOut(); null }
+        // Offline / slow connection: trust the role saved on the phone so the admin can keep working.
+        return runCatching { resolve(user.uid, user.email, Source.CACHE) }.getOrNull()
     }
 
     suspend fun signIn(identifier: String, password: String): Result<Session> = runCatching {
@@ -28,7 +33,7 @@ class AuthRepository(
         val email = if ("@" in id) id else "${id.lowercase()}@attendance.app"
         val user = auth.signInWithEmailAndPassword(email, password).await().user
             ?: error("Sign-in failed.")
-        resolve(user.uid, email) ?: run {
+        resolve(user.uid, email, Source.DEFAULT) ?: run {
             auth.signOut()
             error("This account has no access (deactivated or not registered).")
         }
@@ -42,12 +47,12 @@ class AuthRepository(
 
     fun signOut() = auth.signOut()
 
-    private suspend fun resolve(uid: String, email: String?): Session? {
-        val admin = db.collection("admins").document(uid).get().await()
+    private suspend fun resolve(uid: String, email: String?, source: Source): Session? {
+        val admin = db.collection("admins").document(uid).get(source).await()
         if (admin.exists()) {
             return Session(uid, Role.ADMIN, admin.getString("name") ?: email ?: "Admin")
         }
-        val emp = db.collection("employees").document(uid).get().await()
+        val emp = db.collection("employees").document(uid).get(source).await()
         if (emp.exists() && emp.getBoolean("active") != false) {
             return Session(uid, Role.WORKER, emp.getString("fullName") ?: email ?: "Employee")
         }
