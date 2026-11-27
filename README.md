@@ -2,6 +2,12 @@
 
 Kotlin + Jetpack Compose + Firebase (Auth, Firestore, Storage). Dark/silver 3D glass UI.
 
+## How the app works
+- **User panel** opens directly, no login. It only shows the sheets, names and attendance created by the admin (view only).
+- **Admin Panel**: user panel top-right 3-dot menu -> Admin Panel -> sign in (password protected). Admin can create sheets (sheet name + group name), open a sheet, add / remove names (shown A to Z), and mark Present / Absent / Late / Leave per date.
+- Employee / old attendance screens were removed.
+- **Republish `firestore.rules`** (public read for sheets, admin-only write).
+
 ## Status
 - **Phase 2 (this commit):** employee add/edit/activate/deactivate/soft-delete (creates the worker login), daily attendance entry with auto working hours, late detection (grace period), **early-leave reason box**, office settings, live dashboard, worker panel reading only own records. All data is stored permanently in Firestore.
 - **Phase 1:** project + CI, theme, splash, login (Admin/Worker tabs, show/hide password,
@@ -30,7 +36,7 @@ Settings → Secrets and variables → Actions:
 
 | Secret | Value |
 |---|---|
-| `GOOGLE_SERVICES_JSON` | output of `base64 -w0 app/google-services.json` |
+| `GOOGLE_SERVICES_JSON` | base64 of `app/google-services.json` (raw JSON text also works). If missing, CI uses a placeholder so the build still passes |
 | `KEYSTORE_BASE64` (optional) | base64 of your `.jks` |
 | `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` (optional) | signing values |
 

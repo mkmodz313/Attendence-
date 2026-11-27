@@ -1,5 +1,6 @@
 package com.attendance.pro.ui.screens
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,9 +30,10 @@ import com.attendance.pro.ui.theme.*
 fun LoginScreen(
     state: AuthState.LoggedOut,
     onSignIn: (String, String, Role) -> Unit,
-    onReset: (String) -> Unit
+    onReset: (String) -> Unit,
+    onBack: () -> Unit = {}
 ) {
-    var role by rememberSaveable { mutableStateOf(Role.ADMIN) }
+    val role = Role.ADMIN
     var id by rememberSaveable { mutableStateOf("") }
     var pw by rememberSaveable { mutableStateOf("") }
     var show by rememberSaveable { mutableStateOf(false) }
@@ -45,25 +47,11 @@ fun LoginScreen(
     ) {
         Icon(Icons.Filled.AccessTime, null, tint = SilverBright, modifier = Modifier.size(64.dp))
         Spacer(Modifier.height(12.dp))
-        Text("Welcome Back", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = SilverBright)
-        Text("Sign in to continue", color = Silver.copy(alpha = 0.7f))
+        Text("Admin Panel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = SilverBright)
+        Text("Password protected - admin only", color = Silver.copy(alpha = 0.7f))
         Spacer(Modifier.height(28.dp))
 
         GlassCard(Modifier.fillMaxWidth()) {
-            Row(
-                Modifier.fillMaxWidth().background(Black.copy(alpha = 0.5f), RoundedCornerShape(14.dp)).padding(4.dp)
-            ) {
-                listOf(Role.ADMIN to "Admin", Role.WORKER to "Worker").forEach { (r, label) ->
-                    val sel = role == r
-                    Box(
-                        Modifier.weight(1f)
-                            .background(if (sel) Silver else Color.Transparent, RoundedCornerShape(11.dp))
-                            .clickable { role = r }.padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) { Text(label, color = if (sel) Black else Silver, fontWeight = FontWeight.Bold) }
-                }
-            }
-            Spacer(Modifier.height(18.dp))
             OutlinedTextField(
                 value = id, onValueChange = { id = it }, singleLine = true,
                 label = { Text(if (role == Role.ADMIN) "Admin email / username" else "Worker email / username") },
@@ -92,6 +80,7 @@ fun LoginScreen(
             state.info?.let { Text(it, color = OkGreen, modifier = Modifier.padding(top = 10.dp)) }
             Spacer(Modifier.height(18.dp))
             GradientButton("SIGN IN", loading = state.busy) { onSignIn(id, pw, role) }
+            TextButton(onBack, Modifier.align(Alignment.CenterHorizontally)) { Text("Back to Attendance", color = Silver) }
         }
     }
 

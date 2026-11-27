@@ -64,6 +64,59 @@ class DataRepository(private val db: FirebaseFirestore = FirebaseFirestore.getIn
     suspend fun setSettings(s: OfficeSettings): Boolean =
         db.collection("office_settings").document("main").set(s).confirmed()
 
+    // ---------------------------------------------------------------- Sheets
+    fun newId(collection: String): String = db.collection(collection).document().id
+
+    fun sheets(): Flow<List<SheetDef>> =
+        db.collection("sheets").listen { d -> d.toObject(SheetDef::class.java)?.copy(id = d.id) }
+
+    fun sheetMembers(): Flow<List<SheetMember>> =
+        db.collection("sheet_members").listen { d -> d.toObject(SheetMember::class.java)?.copy(id = d.id) }
+
+    fun sheetMarksForDate(date: String): Flow<List<SheetMark>> =
+        db.collection("sheet_marks").whereEqualTo("date", date)
+            .listen { d -> d.toObject(SheetMark::class.java)?.copy(id = d.id) }
+
+    /** All marks of one month ("yyyy-MM"). Range filter on one field => no composite index needed. */
+    fun sheetMarksForMonth(ym: String): Flow<List<SheetMark>> =
+        db.collection("sheet_marks")
+            .whereGreaterThanOrEqualTo("date", "$ym-01").whereLessThanOrEqualTo("date", "$ym-31")
+            .listen { d -> d.toObject(SheetMark::class.java)?.copy(id = d.id) }
+
+    // ---- editable grids (one doc per sheet per month)
+    fun sheetGrid(docId: String): Flow<GridSnap> = callbackFlow<GridSnap> {
+        val reg = db.collection("sheet_grids").document(docId).addSnapshotListener { s, e ->
+            if (e != null) close(e)
+            else trySend(GridSnap(docId, s?.toObject(SheetGrid::class.java), s?.metadata?.isFromCache ?: true, true))
+        }
+        awaitClose { reg.remove() }
+    }.catch { emit(GridSnap(docId, null, true, true)) }
+
+    suspend fun getSheetGrid(docId: String): SheetGrid? = withTimeoutOrNull(6000) {
+        db.collection("sheet_grids").document(docId).get().await().toObject(SheetGrid::class.java)
+    }
+
+    suspend fun setSheetGrid(g: SheetGrid): Boolean =
+        db.collection("sheet_grids").document(g.sheetId + "_" + g.ym).set(g).confirmed()
+
+    suspend fun deleteGridsOfSheet(sheetId: String) {
+        val snap = db.collection("sheet_grids").whereEqualTo("sheetId", sheetId).get().await()
+        snap.documents.forEach { it.reference.delete() }
+    }
+
+    suspend fun setSheet(s: SheetDef): Boolean = db.collection("sheets").document(s.id).set(s).confirmed()
+    suspend fun deleteSheet(id: String): Boolean = db.collection("sheets").document(id).delete().confirmed()
+
+    suspend fun setSheetMember(m: SheetMember): Boolean =
+        db.collection("sheet_members").document(m.id).set(m).confirmed()
+    suspend fun deleteSheetMember(id: String): Boolean =
+        db.collection("sheet_members").document(id).delete().confirmed()
+
+    suspend fun setSheetMark(m: SheetMark): Boolean =
+        db.collection("sheet_marks").document(m.id).set(m).confirmed()
+    suspend fun deleteSheetMark(id: String): Boolean =
+        db.collection("sheet_marks").document(id).delete().confirmed()
+
     /**
      * Creates the worker's login WITHOUT signing the admin out, by using a second
      * FirebaseApp instance just for account creation.

@@ -1,2 +1,5 @@
 -keepattributes Signature,*Annotation*
 -keep class com.attendance.pro.data.** { *; }
+-dontwarn **
+-keep class com.google.firebase.** { *; }
+-keepclassmembers class * { @com.google.firebase.firestore.PropertyName <fields>; }

@@ -127,3 +127,38 @@ fun dayName(date: String): String = runCatching {
 fun prettyDate(date: String): String = runCatching {
     LocalDate.parse(date).format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH))
 }.getOrDefault(date)
+
+// ------------------------------------------------------------------ Sheets (name-list attendance)
+/** A sheet = one page (e.g. "Morning Batch") that belongs to a group (e.g. "Group A"). */
+data class SheetDef(
+    val id: String = "",
+    val name: String = "",
+    val groupName: String = "",
+    val order: Long = 0L
+)
+
+/** A person added to a sheet just by typing the name. */
+data class SheetMember(
+    val id: String = "",
+    val sheetId: String = "",
+    val name: String = "",
+    val order: Long = 0L
+)
+
+/** One mark per member per day. Doc id = "{memberId}_{yyyy-MM-dd}" => no duplicates possible. */
+data class SheetMark(
+    val id: String = "",
+    val sheetId: String = "",
+    val memberId: String = "",
+    val date: String = "",
+    val status: String = "",      // "" = normal day with times | LEAVE ("L") | ABSENT ("A") | legacy PRESENT / LATE
+    val timeIn: String = "",      // top cell of the day column on the paper sheet
+    val timeOut: String = ""      // bottom cell of the day column on the paper sheet
+)
+
+object SheetStatus {
+    const val PRESENT = "PRESENT"
+    const val ABSENT = "ABSENT"
+    const val LATE = "LATE"
+    const val LEAVE = "LEAVE"
+}

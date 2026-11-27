@@ -32,6 +32,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Name-list attendance sheets: anyone can VIEW (user panel has no login), only admin can change.
+    match /sheets/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /sheet_members/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /sheet_grids/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /sheet_marks/{id} { allow read: if true; allow write: if isAdmin(); }
+
     match /holidays/{id} {
       allow read: if signedIn();
       allow write: if isAdmin();
